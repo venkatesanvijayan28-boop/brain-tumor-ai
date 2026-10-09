@@ -1,23 +1,46 @@
 import json
 import os
 import numpy as np
+
+# Set TensorFlow CPU thread limits before importing TF to prevent memory/CPU thrashing on free-tier cloud hosts
+os.environ['TF_NUM_INTEROP_THREADS'] = '1'
+os.environ['TF_NUM_INTRAOP_THREADS'] = '1'
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.efficientnet import preprocess_input
 
 
 # --- Model Loading ---
-# Try best model first, fall back to regular model
-if os.path.exists("models/best_brain_tumor_model.h5"):
-    MODEL_PATH = "models/best_brain_tumor_model.h5"
-else:
-    MODEL_PATH = "models/brain_tumor_model.h5"
+_model = None
+IMG_SIZE = (224, 224)
 
-model = load_model(MODEL_PATH)
 
-# Get the expected input size from the model
-input_shape = model.input_shape
-IMG_SIZE = (input_shape[1], input_shape[2])
+def get_model():
+    """Load and return the trained brain tumor model (cached)."""
+    global _model, IMG_SIZE
+    if _model is None:
+        if os.path.exists("models/best_brain_tumor_model.h5"):
+            model_path = "models/best_brain_tumor_model.h5"
+        else:
+            model_path = "models/brain_tumor_model.h5"
+        
+        print(f"Loading model from {model_path}...")
+        _model = load_model(model_path)
+        input_shape = _model.input_shape
+        if input_shape and len(input_shape) >= 3 and input_shape[1] is not None:
+            IMG_SIZE = (input_shape[1], input_shape[2])
+    return _model
+
+
+# Pre-warm model on module import
+try:
+    model = get_model()
+except Exception as err:
+    print(f"Warning: Failed to pre-load model: {err}")
+    model = None
 
 # --- Class Labels ---
 CLASS_LABELS = {
@@ -62,6 +85,8 @@ def predict_tumor(image_path):
             - 'probabilities': Dict of all class probabilities
             - 'predicted_class_index': Index of predicted class
     """
+    mdl = get_model()
+
     # Load and preprocess the image
     img = image.load_img(image_path, target_size=IMG_SIZE)
     img_array = image.img_to_array(img)
@@ -69,7 +94,7 @@ def predict_tumor(image_path):
     img_array = preprocess_input(img_array)
 
     # Make prediction
-    predictions = model.predict(img_array, verbose=0)
+    predictions = mdl.predict(img_array, verbose=0)
     predicted_index = np.argmax(predictions[0])
     confidence = float(predictions[0][predicted_index]) * 100
 
