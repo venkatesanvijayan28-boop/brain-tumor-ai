@@ -7,11 +7,16 @@ env/
 # Python cache
 __pycache__/
 *.py[cod]
-*$py.class
+*.class
 
-# Uploads and temporary files
+# Large training dataset (optional for server deployment)
+dataset/
+
+# Uploads and generated reports
 uploads/*
 !uploads/.gitkeep
+static/reports/*
+!static/reports/.gitkeep
 
 # IDE / System
 .vscode/
