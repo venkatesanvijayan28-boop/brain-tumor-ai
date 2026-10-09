@@ -991,6 +991,20 @@
             // Show results
             resultsSection.classList.add('visible');
             document.getElementById('resultsCard').classList.add('result-glow');
+
+            // Voice Alert (Client-side Web Speech API)
+            if ((voiceToggle.checked || data.voice_text) && 'speechSynthesis' in window) {
+                try {
+                    window.speechSynthesis.cancel();
+                    const speakText = data.voice_text || `Prediction result: ${pred.label} with ${pred.confidence.toFixed(1)} percent confidence. Severity level: ${severity.severity || 'Normal'}.`;
+                    const utterance = new SpeechSynthesisUtterance(speakText);
+                    utterance.rate = 0.95;
+                    utterance.pitch = 1.0;
+                    window.speechSynthesis.speak(utterance);
+                } catch (e) {
+                    console.warn('Browser SpeechSynthesis error:', e);
+                }
+            }
         }
 
         // ============================================================
