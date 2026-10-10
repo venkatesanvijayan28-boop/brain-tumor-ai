@@ -12,6 +12,9 @@ __pycache__/
 # Uploads and temporary files
 uploads/*
 !uploads/.gitkeep
+static/reports/brain_tumor_report_*.pdf
+!static/reports/brain_tumor_report_2f4df015.pdf
+!static/reports/brain_tumor_report_5f9f7239.pdf
 
 # IDE / System
 .vscode/
