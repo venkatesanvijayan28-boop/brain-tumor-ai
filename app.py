@@ -18,7 +18,7 @@ from report_generator import generate_report
 # App Configuration
 # ============================================================
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'brain-tumor-ai-secret-key')
+app.config['SECRET_KEY'] = 'brain-tumor-ai-secret-key'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'bmp', 'tiff', 'tif'}
@@ -45,15 +45,6 @@ def allowed_file(filename):
 def index():
     """Home page with image upload form."""
     return render_template('index.html')
-
-
-@app.route('/health')
-def health():
-    """Health check endpoint to verify deployment status."""
-    return jsonify({
-        'status': 'healthy',
-        'app': 'Brain Tumor AI'
-    }), 200
 
 
 @app.route('/predict', methods=['POST'])
@@ -88,14 +79,15 @@ def predict():
         # Step 3: Analyze severity
         severity = analyze_severity(result['label'], result['confidence'])
 
-        # Step 4: Voice alert text generation
+        # Step 4: Voice alert (optional, based on request parameter)
         use_voice = request.form.get('voice_alert', 'false').lower() == 'true'
-        alert_text = f"Prediction result: {result['label']} with {result['confidence']:.1f}% confidence. Severity level: {severity.get('severity', 'Normal')}."
         if use_voice:
+            alert_text = f"Prediction result: {result['label']} with {result['confidence']:.1f}% confidence. "
+            alert_text += f"Severity level: {severity.get('severity', 'Unknown')}."
             try:
                 speak_result(alert_text)
             except Exception:
-                pass
+                pass  # Don't fail if voice doesn't work
 
         # Store in history
         history_entry = {
@@ -121,8 +113,7 @@ def predict():
             'severity': severity,
             'quality': quality,
             'image_url': f'/uploads/{unique_filename}',
-            'history_id': history_entry['id'],
-            'voice_text': alert_text if use_voice else None
+            'history_id': history_entry['id']
         }
 
         return jsonify(response)
@@ -184,5 +175,4 @@ if __name__ == '__main__':
     print(f"  Server starting at http://127.0.0.1:5000")
     print(f"  Upload MRI images for tumor classification")
     print("=" * 60 + "\n")
-    port = int(os.environ.get('PORT', 5000))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    app.run(debug=True, host='0.0.0.0', port=5000)

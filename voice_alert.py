@@ -1,24 +1,26 @@
-import sys
-import os
+import pyttsx3
+
+# Initialize the TTS engine
+engine = pyttsx3.init()
+
 
 def speak_result(text):
     """
-    Log voice text. Voice synthesis is performed client-side in browser.
-    Prevents server hanging or blocking on headless cloud environments (Render).
+    Speak the prediction result using text-to-speech.
 
     Args:
-        text (str): The text to be spoken.
+        text (str): The text to speak aloud.
     """
-    print(f"[Voice Alert] {text}")
-    # Only attempt pyttsx3 if running on a local desktop with display/audio attached
-    if sys.platform == 'win32' and os.environ.get('ENABLE_SERVER_VOICE', 'false').lower() == 'true':
-        try:
-            import pyttsx3
-            engine = pyttsx3.init()
-            engine.setProperty('rate', 150)
-            engine.say(text)
-            engine.runAndWait()
-        except Exception as e:
-            print(f"[Voice Alert] Local TTS skipped: {e}")
+    try:
+        engine.setProperty('rate', 150)    # Speed of speech
+        engine.setProperty('volume', 0.9)  # Volume (0.0 to 1.0)
 
+        # Try to use a female voice if available
+        voices = engine.getProperty('voices')
+        if len(voices) > 1:
+            engine.setProperty('voice', voices[1].id)
 
+        engine.say(text)
+        engine.runAndWait()
+    except Exception as e:
+        print(f"Voice alert error: {e}")
