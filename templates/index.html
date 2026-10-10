@@ -670,7 +670,7 @@
                 <div class="toggle-row">
                     <label><i class="fas fa-volume-up"></i> &nbsp;Voice Alert</label>
                     <div class="toggle-switch">
-                        <input type="checkbox" id="voiceToggle">
+                        <input type="checkbox" id="voiceToggle" checked>
                         <span class="toggle-slider"></span>
                     </div>
                 </div>
@@ -983,6 +983,20 @@
             // Show results
             resultsSection.classList.add('visible');
             document.getElementById('resultsCard').classList.add('result-glow');
+
+            // Voice Alert (Client-side Web Speech API)
+            if ((voiceToggle.checked || data.voice_text) && 'speechSynthesis' in window) {
+                try {
+                    window.speechSynthesis.cancel();
+                    const speakText = data.voice_text || `Prediction result: ${pred.label} with ${pred.confidence.toFixed(1)} percent confidence. Severity level: ${severity.severity || 'Normal'}.`;
+                    const utterance = new SpeechSynthesisUtterance(speakText);
+                    utterance.rate = 0.95;
+                    utterance.pitch = 1.0;
+                    window.speechSynthesis.speak(utterance);
+                } catch (e) {
+                    console.warn('Speech synthesis error:', e);
+                }
+            }
         }
 
         // ============================================================

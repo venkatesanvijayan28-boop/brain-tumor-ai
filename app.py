@@ -80,7 +80,7 @@ def predict():
         severity = analyze_severity(result['label'], result['confidence'])
 
         # Step 4: Voice alert (optional, based on request parameter)
-        use_voice = request.form.get('voice_alert', 'false').lower() == 'true'
+        use_voice = request.form.get('voice_alert', 'true').lower() == 'true'
         if use_voice:
             alert_text = f"Prediction result: {result['label']} with {result['confidence']:.1f}% confidence. "
             alert_text += f"Severity level: {severity.get('severity', 'Unknown')}."
@@ -113,7 +113,8 @@ def predict():
             'severity': severity,
             'quality': quality,
             'image_url': f'/uploads/{unique_filename}',
-            'history_id': history_entry['id']
+            'history_id': history_entry['id'],
+            'voice_text': alert_text if use_voice else None
         }
 
         return jsonify(response)
