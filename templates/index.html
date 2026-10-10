@@ -301,9 +301,19 @@
         .toggle-switch {
             position: relative;
             width: 44px; height: 24px;
+            display: inline-block;
+            cursor: pointer;
         }
 
-        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-switch input {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 2;
+            margin: 0;
+        }
 
         .toggle-slider {
             position: absolute;
@@ -312,6 +322,7 @@
             background: #334155;
             border-radius: 24px;
             transition: 0.3s;
+            pointer-events: none;
         }
 
         .toggle-slider::before {
@@ -668,11 +679,11 @@
 
                 <!-- Voice Toggle -->
                 <div class="toggle-row">
-                    <label><i class="fas fa-volume-up"></i> &nbsp;Voice Alert</label>
-                    <div class="toggle-switch">
+                    <label for="voiceToggle" style="cursor: pointer; user-select: none;"><i class="fas fa-volume-up"></i> &nbsp;Voice Alert</label>
+                    <label class="toggle-switch" for="voiceToggle">
                         <input type="checkbox" id="voiceToggle" checked>
                         <span class="toggle-slider"></span>
-                    </div>
+                    </label>
                 </div>
 
                 <!-- Buttons -->
