@@ -984,20 +984,42 @@
             resultsSection.classList.add('visible');
             document.getElementById('resultsCard').classList.add('result-glow');
 
-            // Voice Alert (Client-side Web Speech API)
-            if ((voiceToggle.checked || data.voice_text) && 'speechSynthesis' in window) {
+            // Voice Alert (Client-side Web Speech API) - strictly female voice only
+            if (voiceToggle.checked && 'speechSynthesis' in window) {
                 try {
                     window.speechSynthesis.cancel();
                     const speakText = data.voice_text || `Prediction result: ${pred.label} with ${pred.confidence.toFixed(1)} percent confidence. Severity level: ${severity.severity || 'Normal'}.`;
                     const utterance = new SpeechSynthesisUtterance(speakText);
                     utterance.rate = 0.95;
-                    utterance.pitch = 1.0;
+                    utterance.pitch = 1.1; // Female pitch
+
+                    // Select female voice specifically
+                    const voices = window.speechSynthesis.getVoices();
+                    const femaleVoice = voices.find(v => {
+                        const n = v.name.toLowerCase();
+                        return n.includes('zira') || n.includes('female') || n.includes('jenny') || 
+                               n.includes('aria') || n.includes('sonia') || n.includes('samantha') || 
+                               n.includes('victoria') || n.includes('karen') || n.includes('natural');
+                    }) || voices.find(v => v.lang && v.lang.startsWith('en') && !v.name.toLowerCase().includes('david') && !v.name.toLowerCase().includes('male'));
+
+                    if (femaleVoice) {
+                        utterance.voice = femaleVoice;
+                    }
                     window.speechSynthesis.speak(utterance);
                 } catch (e) {
                     console.warn('Speech synthesis error:', e);
                 }
+            } else if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
             }
         }
+
+        // Voice toggle on/off real-time control
+        voiceToggle.addEventListener('change', () => {
+            if (!voiceToggle.checked && 'speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+        });
 
         // ============================================================
         // Download Report

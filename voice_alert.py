@@ -25,9 +25,17 @@ def speak_result(text):
             engine.setProperty('rate', 150)    # Speed of speech
             engine.setProperty('volume', 0.9)  # Volume (0.0 to 1.0)
 
-            # Try to use a female voice if available
+            # Select a female voice specifically (e.g., Microsoft Zira)
             voices = engine.getProperty('voices')
-            if len(voices) > 1:
+            female_voice = None
+            for v in voices:
+                v_str = f"{v.id} {v.name}".lower()
+                if 'zira' in v_str or 'female' in v_str or 'hazel' in v_str or 'susan' in v_str:
+                    female_voice = v.id
+                    break
+            if female_voice:
+                engine.setProperty('voice', female_voice)
+            elif len(voices) > 1:
                 engine.setProperty('voice', voices[1].id)
 
             engine.say(text)
