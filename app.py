@@ -47,6 +47,15 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/health')
+def health():
+    """Health check endpoint to verify deployment status."""
+    return jsonify({
+        'status': 'healthy',
+        'app': 'Brain Tumor AI'
+    }), 200
+
+
 @app.route('/predict', methods=['POST'])
 def predict():
     """Handle image upload and return prediction results."""

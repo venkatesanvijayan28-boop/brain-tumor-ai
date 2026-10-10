@@ -1,12 +1,15 @@
+import gc
 import json
 import os
 import numpy as np
 
-# Set TensorFlow CPU thread limits before importing TF to prevent memory/CPU thrashing on free-tier cloud hosts
+# Set TensorFlow CPU memory & thread limits before importing TF to prevent memory spikes on free-tier cloud hosts (Render 512MB RAM)
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 os.environ['TF_NUM_INTEROP_THREADS'] = '1'
 os.environ['TF_NUM_INTRAOP_THREADS'] = '1'
 os.environ['OMP_NUM_THREADS'] = '1'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+os.environ['MALLOC_TRIM_THRESHOLD_'] = '100000'
 
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
@@ -28,10 +31,18 @@ def get_model():
             model_path = "models/brain_tumor_model.h5"
         
         print(f"Loading model from {model_path}...")
-        _model = load_model(model_path)
+        _model = load_model(model_path, compile=False)
         input_shape = _model.input_shape
         if input_shape and len(input_shape) >= 3 and input_shape[1] is not None:
             IMG_SIZE = (input_shape[1], input_shape[2])
+
+        # Pre-warm model graph so first inference request is immediate
+        try:
+            dummy = np.zeros((1, IMG_SIZE[0], IMG_SIZE[1], 3), dtype=np.float32)
+            _model(dummy, training=False)
+        except Exception as warmup_err:
+            print(f"Warmup notice: {warmup_err}")
+
     return _model
 
 
@@ -86,6 +97,8 @@ def predict_tumor(image_path):
             - 'predicted_class_index': Index of predicted class
     """
     mdl = get_model()
+    if mdl is None:
+        raise RuntimeError("Failed to load brain tumor model.")
 
     # Load and preprocess the image
     img = image.load_img(image_path, target_size=IMG_SIZE)
@@ -94,7 +107,7 @@ def predict_tumor(image_path):
     img_array = preprocess_input(img_array)
 
     # Make prediction
-    predictions = mdl.predict(img_array, verbose=0)
+    predictions = mdl(img_array, training=False).numpy()
     predicted_index = np.argmax(predictions[0])
     confidence = float(predictions[0][predicted_index]) * 100
 
@@ -107,9 +120,13 @@ def predict_tumor(image_path):
     # Get predicted label
     label = index_to_class.get(predicted_index, f"Class {predicted_index}")
 
+    # Free any temporary image tensor allocations
+    gc.collect()
+
     return {
         "label": label,
         "confidence": round(confidence, 2),
         "probabilities": probabilities,
         "predicted_class_index": int(predicted_index)
     }
+
