@@ -1,3 +1,4 @@
+
 """
 Brain Tumor Detection - Flask Web Application
 Upload MRI images and get AI-powered tumor classification results.
@@ -11,7 +12,6 @@ from werkzeug.utils import secure_filename
 from predict import predict_tumor
 from quality_checker import check_image_quality
 from severity_analysis import analyze_severity
-from voice_alert import speak_result
 from report_generator import generate_report
 
 # ============================================================
@@ -21,7 +21,9 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'brain-tumor-ai-secret-key'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
-app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'bmp', 'tiff', 'tif'}
+app.config['ALLOWED_EXTENSIONS'] = {
+    'png', 'jpg', 'jpeg', 'bmp', 'tiff', 'tif'
+}
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs('static', exist_ok=True)
@@ -50,49 +52,67 @@ def index():
 @app.route('/predict', methods=['POST'])
 def predict():
     """Handle image upload and return prediction results."""
+
     # Check if file was uploaded
     if 'file' not in request.files:
-        return jsonify({'error': 'No file uploaded. Please select an MRI image.'}), 400
+        return jsonify({
+            'error': 'No file uploaded. Please select an MRI image.'
+        }), 400
 
     file = request.files['file']
+
     if file.filename == '':
-        return jsonify({'error': 'No file selected. Please choose an MRI image.'}), 400
+        return jsonify({
+            'error': 'No file selected. Please choose an MRI image.'
+        }), 400
 
     if not allowed_file(file.filename):
         return jsonify({
-            'error': f'Invalid file type. Allowed types: {", ".join(app.config["ALLOWED_EXTENSIONS"])}'
+            'error': (
+                f'Invalid file type. Allowed types: '
+                f'{", ".join(app.config["ALLOWED_EXTENSIONS"])}'
+            )
         }), 400
 
     try:
         # Save uploaded file with unique name
         ext = file.filename.rsplit('.', 1)[1].lower()
         unique_filename = f"{uuid.uuid4().hex}.{ext}"
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+        filepath = os.path.join(
+            app.config['UPLOAD_FOLDER'],
+            unique_filename
+        )
         file.save(filepath)
 
         # Step 1: Check image quality
         quality = check_image_quality(filepath)
 
-        # Step 2: Make prediction (even if quality is poor, still predict)
+        # Step 2: Make prediction
         result = predict_tumor(filepath)
 
         # Step 3: Analyze severity
-        severity = analyze_severity(result['label'], result['confidence'])
+        severity = analyze_severity(
+            result['label'],
+            result['confidence']
+        )
 
-        # Step 4: Voice alert (optional, based on request parameter)
-        use_voice = request.form.get('voice_alert', 'true').lower() == 'true'
-        if use_voice:
-            alert_text = f"Prediction result: {result['label']} with {result['confidence']:.1f}% confidence. "
-            alert_text += f"Severity level: {severity.get('severity', 'Unknown')}."
-            try:
-                speak_result(alert_text)
-            except Exception:
-                pass  # Don't fail if voice doesn't work
+        # Step 4: Prepare browser voice alert without blocking prediction
+        use_voice = (
+            request.form.get('voice_alert', 'true').lower() == 'true'
+        )
+
+        alert_text = (
+            f"Prediction result: {result['label']} with "
+            f"{result['confidence']:.1f}% confidence. "
+            f"Severity level: {severity.get('severity', 'Unknown')}."
+        ) if use_voice else None
 
         # Store in history
         history_entry = {
             'id': uuid.uuid4().hex[:8],
-            'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'timestamp': datetime.datetime.now().strftime(
+                '%Y-%m-%d %H:%M:%S'
+            ),
             'filename': file.filename,
             'image_path': unique_filename,
             'label': result['label'],
@@ -100,6 +120,7 @@ def predict():
             'severity': severity.get('severity', 'Unknown'),
             'risk_level': severity.get('risk_level', 'Unknown')
         }
+
         prediction_history.insert(0, history_entry)
 
         # Build response
@@ -114,19 +135,24 @@ def predict():
             'quality': quality,
             'image_url': f'/uploads/{unique_filename}',
             'history_id': history_entry['id'],
-            'voice_text': alert_text if use_voice else None
+            'voice_text': alert_text
         }
 
         return jsonify(response)
 
     except Exception as e:
-        return jsonify({'error': f'Prediction failed: {str(e)}'}), 500
+        app.logger.exception("MRI prediction failed")
+        return jsonify({
+            'error': f'Prediction failed: {str(e)}'
+        }), 500
 
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     """Serve uploaded images."""
-    return send_file(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    return send_file(
+        os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    )
 
 
 @app.route('/download_report', methods=['POST'])
@@ -144,20 +170,35 @@ def download_report():
         }
 
         # Generate report
-        report_filename = f"brain_tumor_report_{uuid.uuid4().hex[:8]}.pdf"
-        report_path = os.path.join('static', 'reports', report_filename)
+        report_filename = (
+            f"brain_tumor_report_{uuid.uuid4().hex[:8]}.pdf"
+        )
+        report_path = os.path.join(
+            'static', 'reports', report_filename
+        )
+
         generate_report(report_path, prediction_data)
 
-        return send_file(report_path, as_attachment=True, download_name=report_filename)
+        return send_file(
+            report_path,
+            as_attachment=True,
+            download_name=report_filename
+        )
 
     except Exception as e:
-        return jsonify({'error': f'Report generation failed: {str(e)}'}), 500
+        app.logger.exception("Report generation failed")
+        return jsonify({
+            'error': f'Report generation failed: {str(e)}'
+        }), 500
 
 
 @app.route('/history')
 def history():
     """View prediction history."""
-    return render_template('history.html', history=prediction_history)
+    return render_template(
+        'history.html',
+        history=prediction_history
+    )
 
 
 @app.route('/api/history')
@@ -173,7 +214,8 @@ if __name__ == '__main__':
     print("\n" + "=" * 60)
     print("  BRAIN TUMOR DETECTION AI - WEB APPLICATION")
     print("=" * 60)
-    print(f"  Server starting at http://127.0.0.1:5000")
-    print(f"  Upload MRI images for tumor classification")
+    print("  Server starting at http://127.0.0.1:5000")
+    print("  Upload MRI images for tumor classification")
     print("=" * 60 + "\n")
+
     app.run(debug=True, host='0.0.0.0', port=5000)
